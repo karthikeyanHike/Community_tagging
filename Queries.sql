@@ -61,8 +61,6 @@ where name is not NULL;
 
 
 
-______________________________________________________
-
 
 drop table if exists temp;
 
@@ -132,8 +130,6 @@ lower(splitednames.name3) = lower(religiondictionary.name);
 insert into Religion
 select temp.*, '2' from temp;
 
-___________________________________________________
-
 drop table if exists temp;
 create table temp (user_id string, name string );
 
@@ -192,8 +188,6 @@ lower(splitednames.name3) = lower(religiondictionary.name);
 insert into Religion
 select temp.*, '3' from temp;
 
-_______________________________________________________________________
-
 drop table if exists SplitedNames1;
 CREATE table SplitedNames1(user_id string , name1 string, name2 string, name3 string );
 
@@ -231,7 +225,6 @@ SurnameDictionary.religion.
 on
 lower(Splitednames1.name3) = lower(SurnameDictionary.surname);
 
-_______________________________________________________________________________
 
 
 
