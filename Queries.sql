@@ -1,64 +1,40 @@
-set hive.exec.reducers.bytes.per.reducer= 1000;
-set hive.exec.reducers.max= 1000;
-set mapreduce.job.reduces= 1000;
- 
-
-###############Creating MSIuser_id ###############
-
-drop table if exists Msiuser_id;
-create table Msiuser_id (msisdn bigint, user_id string);
-insert into Msiuser_id
-select msisdn, id from hike.users;
-
-
-########### Creating Final Names ########################
-
+###########################  Creating Final Names ##################################
 
 drop table if exists temp;
-create table temp (msisdn bigint, name string );
+create table temp (user_id string, msisdn bigint );
 
-insert into temp 
-select
-contact_msisdn, contact_name from 
-hike.addressbook_main_snapshot where contact_msisdn is not NULL ;
-
-drop table if exists AllAddressbookName;
-create table AllAddressbookName(user_id string, name string );
-insert into AllAddressbookName
+insert into temp
 select 
-msiuser_id.user_id,
-temp.name
-from msiuser_id inner join temp on
-msiuser_id.msisdn = temp.msisdn;
-
+id, msisdn from 
+hike.users where id in 
+(select user_id  from hike.user_activations where type = "new" and dt = "2017-07-11" )
 
 drop table if exists AddressbookName;
-create table AddressbookName(user_id string, name string );
-insert into AllAddressbookName
-select * from AllAddressbookName where user_id not in (select user_id from religion);
-
-drop table if exists temp;
-create table temp ( user_id string, name string, count int  );
-insert into temp 
-select user_id, name, count(user_id) from AddressbookName group by user_id, name ;
-
-drop table if exists temp1;
-create table temp1 ( user_id string, Maxcount string );
-insert into temp1
-select user_id, max(count) from temp temp;
-
-drop table if exists temp2;
-create table temp2( user_id string, name string, count int  );
-insert into temp2 
-select * from temp where 
-concat(temp.user_id, temp.count) in (select concat(temp1.user_id, temp1.Maxcount ) from temp1 );
+create table AddressbookName (user_id string, name string );
+insert into AddressbookName
+select 
+temp.user_id, temp1.name 
+from temp inner join 
+(select contact_msisdn as msisdn , contact_name as name from hike.addressbook_main_snapshot 
+where 
+contact_msisdn in (select msisdn from temp)
+)temp1 
+on
+temp.msisdn = temp1.msisdn;
 
 drop table if exists finalnames;
 create table finalnames(user_id string, name string, count string);
-insert into finalnames select * from temp2 
-where name is not NULL;
+
+insert into finalnames 
+select
+user_id, name, num from
+(select user_id as user_id,  name as name ,  number as num ,rank() over (order by number desc) as r FROM 
+ (select AddressbookName.user_id as user_id , AddressbookName.name as name , count(AddressbookName.user_id)      as number from AddressbookName group by AddressbookName.user_id, AddressbookName.name ) B
+) A
+WHERE A.r = 1;
 
 
+################################ Exact Match Search  #################################################
 
 
 
@@ -77,6 +53,10 @@ lower(finalnames.name) = lower( religiondictionary.name );
 
 insert into Religion
 select temp.*, '1' from temp;
+
+
+################################  Match After Splitting #################################################
+
 
 drop table if exists temp;
 create table temp (user_id string, name string );
@@ -129,6 +109,9 @@ lower(splitednames.name3) = lower(religiondictionary.name);
 
 insert into Religion
 select temp.*, '2' from temp;
+
+
+###########################  Match From All Addressbook Names  #####################################
 
 drop table if exists temp;
 create table temp (user_id string, name string );
@@ -188,6 +171,10 @@ lower(splitednames.name3) = lower(religiondictionary.name);
 insert into Religion
 select temp.*, '3' from temp;
 
+
+###########################  Surname Search  #####################################
+
+
 drop table if exists SplitedNames1;
 CREATE table SplitedNames1(user_id string , name1 string, name2 string, name3 string );
 
@@ -225,14 +212,12 @@ SurnameDictionary.religion.
 on
 lower(Splitednames1.name3) = lower(SurnameDictionary.surname);
 
+insert into Religion
+select temp.*, '4' from temp;
 
 
 
-
-
-
-
-
+#################################################################################################
 
 
 
